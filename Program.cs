@@ -1,12 +1,15 @@
-using Owin;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Routing.Matching;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.SqlServer;
 using webapp_cloudrun;
+using webapp_cloudrun.Data;
 
 var builder = WebApplication.CreateBuilder(args);
- 
+   
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+builder.Services.AddDbContext<MovieContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
+
 var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
