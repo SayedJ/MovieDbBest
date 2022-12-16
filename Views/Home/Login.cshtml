@@ -1,0 +1,99 @@
+﻿
+@model webapp_cloudrun.Models.UserLogin
+@{
+    ViewData["Title"] = "Login Page";
+}
+
+<link href="//maxcdn.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<!------ Include the above in your HEAD tag ---------->
+
+<div class="container login-container">
+    <div class="row">
+
+        <div class="col-md-6 login-form">
+            <span style="color:red">@ViewBag.error</span>
+            <h4>User Login Form</h4>
+            <form asp-action="Login">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                <div class="form-group">
+                    <input type="text" asp-for="Username" class="form-control" placeholder="Username *" value="" />
+                    <span asp-validation-for="Username" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <input type="password" asp-for="Password" class="form-control" placeholder="Password *" value="" />
+                    <span asp-validation-for="Password" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <input type="submit" class="btnSubmit" value="Login" />
+                </div>
+                <div class="form-group">
+                    <a href="#" class="ForgetPsd">Forget Password?</a>
+                </div>
+                <div >
+                <a asp-action="Registration" class="SignUp">Sign up </a>
+                </div>
+              
+            </form>
+        </div>
+    </div>
+</div>
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    }
+
+
+    <style>
+
+        .login-container {
+            margin-top: 4%;
+            margin-bottom: 4%;
+            
+        }
+
+        .login-form {
+            padding: 4%;
+            border-radius: 8px;
+            box-shadow: 0 5px 8px 0 rgba(0, 0, 0, 0.2), 0 9px 26px 0 rgba(0, 0, 0, 0.19);
+        }
+
+            .login-form h3 {
+                text-align: center;
+                color: #333;
+            }
+
+        .login-container form {
+            padding: 9%;
+        }
+
+        .btnSubmit {
+            width: 51%;
+            border-radius: 1rem;
+            padding: 1.5%;
+            cursor: pointer;
+            border: none;
+        }
+
+        .login-form .btnSubmit {
+            font-weight: 600;
+            color: #fff;
+            background-color: #0062cc;
+        }
+
+        .login-form .ForgetPsd {
+            color: #0062cc;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .SignUp{
+            color: #0062cc;
+            font-weight: 600;
+            text-decoration: none;
+            float: right;
+        }
+    </style>
+
