@@ -1,29 +1,19 @@
-FROM mcr.microsoft.com/dotnet/sdk:6.0 AS base
+FROM mcr.microsoft.com/dotnet/aspnet:6.0 AS base
 WORKDIR /app
-EXPOSE 80
-EXPOSE 443
 
+EXPOSE 80
 
 FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
 WORKDIR /src
-
-
-
-# Copy csproj and restore as distinct layers
-COPY *.csproj ./
+COPY *.csproj .
 RUN dotnet restore "webapp-cloudrun.csproj"
+COPY . .
+RUN dotnet publish "webapp-cloudrun.csproj" -c Release -o /app/publish
 
-# Copy everything else and build
-COPY . ./
-WORKDIR "/src/."
-RUN dotnet build "webapp-cloudrun.csproj" -c Release -o /app/build
 
-FROM build As publish
-RUN dotnet publish "webapp-cloudrun.csproj" -c Release -o /app/publish /p:UserAppHost=false
 
-# Build runtime image
-FROM base as final
+# final stage/image
+FROM base AS final
 WORKDIR /app
-COPY --from=publish /app/publish .
-
+COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "webapp-cloudrun.dll"]
