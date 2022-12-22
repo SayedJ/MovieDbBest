@@ -9,6 +9,10 @@ using webapp_cloudrun.Models;
 using webapp_cloudrun.Models.MtoGetJsons;
 using webapp_cloudrun.Repositories;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
+using Azure;
+using Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal;
 
 namespace webapp_cloudrun.Controllers;
 
@@ -17,25 +21,86 @@ public class HomeController : Controller
     private readonly ILogger<HomeController> _logger;
     private readonly IMoviesRepo _repo;
     private readonly IHttpContextAccessor _contextAccessor;
-
+    private int userId;
     public HomeController(ILogger<HomeController> logger, IMoviesRepo repo, IHttpContextAccessor contextAccessor)
     {
         _logger = logger;
         _repo = repo;
-        _contextAccessor = contextAccessor; 
+        _contextAccessor = contextAccessor;
+      
     }
     [Authorize()]
     public async Task<IActionResult> Index()
     {
-        var hundredMovies = await _repo.GetAllMoviesWithDetails();
+        var idOfUser = _contextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        userId = Convert.ToInt32(idOfUser);
 
-        var movies = await _repo.GetAllMoviesWithDetails();
+        var hundredMovies = await _repo.GetAllMoviesWithDetails();
 
         ViewBag.User = _contextAccessor.HttpContext.User.Identity.Name;
 
+        ViewBag.UserId = idOfUser;
 
-        return View(hundredMovies);
+        var myMovies = await _repo.GetFavoriteMovieDetails(userId);
+        ViewBag.Movies = myMovies;
+        var notOnMyList = await _repo.IfExistAny(myMovies.ToList(), hundredMovies.ToList());
+
+      
+ 
+            return View(hundredMovies);
+        
+      
+        
     }
+
+    [HttpPost]
+    public async Task<IActionResult> Index(string searchString) {
+
+        var movies = await _repo.GetAllMoviesWithDetails();
+
+        var myMovies = await _repo.GetFavoriteMovieDetails(userId);
+        ViewBag.Movies = myMovies;
+
+        if (!String.IsNullOrEmpty(searchString))
+        {
+            var filteredMovies = movies.Where(s => s.Movie.Title!.Contains(searchString));
+            return View(filteredMovies);
+        }
+        return View(movies);
+    }
+
+ 
+    public async Task<IActionResult> MyFavMovies()
+    {
+        var idOfUser = _contextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        userId = Convert.ToInt32(idOfUser);
+        var myFavoriteMovies = await  _repo.GetFavoriteMovieDetails(userId);
+        ViewBag.Movies = myFavoriteMovies;
+        return View("Index", myFavoriteMovies);
+    } 
+
+
+    public async Task<IActionResult> NotOnMyList()
+    {
+        var idOfUser = _contextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        userId = Convert.ToInt32(idOfUser);
+        var hundredMovies = await _repo.GetAllMoviesWithDetails();
+        var myMovies = await _repo.GetFavoriteMovieDetails(userId);
+        ViewBag.Movies = myMovies;
+        var notOnMyList = await _repo.IfExistAny(myMovies.ToList(), hundredMovies.ToList());
+        return View("Index", notOnMyList);
+    }
+
+    public async Task<IActionResult> AllUsersFavorites()
+    {
+        var usersFav = await _repo.GetAllUsersFavMovies();
+
+        ViewBag.Users = usersFav;
+        return View(usersFav);
+    }
+
+
+
     [HttpGet]
     public IActionResult Login()
     {
@@ -50,7 +115,8 @@ public class HomeController : Controller
             {
 
                 var claims = new List<Claim>{
-                 new Claim(ClaimTypes.NameIdentifier, loggedIn.Username),
+              
+                new Claim(ClaimTypes.NameIdentifier, loggedIn.Id.ToString()),
                 new Claim(ClaimTypes.Name, loggedIn.Username),
                 new Claim(ClaimTypes.Role, loggedIn.Role),
                 new Claim("DisplayName", loggedIn.Name),
@@ -72,6 +138,7 @@ public class HomeController : Controller
                     CookieAuthenticationDefaults.AuthenticationScheme,
                     new ClaimsPrincipal(claimsIdentity),
                     authProperties);
+           
             return Redirect(authProperties.RedirectUri);
             }
 
@@ -107,10 +174,43 @@ public class HomeController : Controller
         }
         return View();
     }
-
-    public async Task<IActionResult> AddToFav(int id)
+    [HttpPost]
+    public async  Task<IActionResult> AddToFav(int movieId)
     {
-        throw new Exception();
+        string respond;
+        //string host = _contextAccessor.HttpContext.Request.Host.Value;
+        //string path = _contextAccessor.HttpContext.Request.Path.Value;
+
+        var userId = _contextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId != null)
+        {
+            var userIdToInt = Convert.ToInt32(userId);
+            respond = await _repo.AddFavMovie(userIdToInt, movieId);
+       
+           
+            TempData["Success"] = respond;
+            return RedirectToAction("Index");
+        }
+
+        return View("Index", "Home");
+
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> RemoveFromFav(int movieId)
+    {
+        //string host = _contextAccessor.HttpContext.Request.Host.Value;
+        //string path = _contextAccessor.HttpContext.Request.Path.Value;
+
+        var userId = _contextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId != null)
+        {
+            var userIdToInt = Convert.ToInt32(userId);
+           await _repo.RemoveFromFav(userIdToInt, movieId);
+            return RedirectToAction(nameof(Index));
+        }
+
+        return RedirectToAction(nameof(Index));
 
     }
 
@@ -124,8 +224,23 @@ public class HomeController : Controller
     {
         return _contextAccessor.HttpContext.Session.GetString(user.Username);
     }
+    public void IfExistAny(List<MovieDetailsVM> myFavs, List<MovieDetailsVM> allMovies)
+    {
+       
 
+    }
+    private Task<bool> IsExist(int id)
+    {
+        var isThere = _repo.IfAny(userId, id);
+        return isThere;
+    }
 
+    [HttpPost]
+    public async Task<IActionResult> Logout()
+    {
+        await _contextAccessor.HttpContext.SignOutAsync();
+        return RedirectToAction("Index", "Home");
+    }
 }
 
 

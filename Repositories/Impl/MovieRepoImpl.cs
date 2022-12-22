@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -38,13 +39,14 @@ namespace webapp_cloudrun.Repositories.Impl
 
         public async Task<IEnumerable<Movie>> GetAllMovies()
         {
-            var movies = await _context.Movies.Where(s => s.Year > 2000).OrderByDescending(j => j.Year).Take(100).ToListAsync();
+            var movies = await _context.Movies.Where(s => s.Year > 1970).OrderByDescending(j => j.Year).Take(20).ToListAsync();
             return movies;
         }
 
         public async Task<IEnumerable<MovieDetailsVM>> GetAllMoviesWithDetails()
         {
-            return await GetFullInfo();
+            var movies = await GetAllMovies();
+            return await GetFullInfo(movies.ToList());
             
         }
 
@@ -148,14 +150,14 @@ namespace webapp_cloudrun.Repositories.Impl
             return imagePath.Url;
 
         }
-        private async Task<IEnumerable<MovieDetailsVM>> GetFullInfo()
+        private async Task<IEnumerable<MovieDetailsVM>> GetFullInfo(List<Movie> AllMovies)
         {
             string defaultImagePath = "wallpapers";
             string? imageUrl = "";
             Person? directorInfo;
             MovieDetailsVM? movieInfo = new MovieDetailsVM();
             var ListOfmovieInfo = new List<MovieDetailsVM>();
-            var movies = await GetAllMovies();
+            var movies = AllMovies;
             foreach(var movie in movies)
             {
                 IEnumerable<Star?>? stars = await GetStarById(movie.Id);
@@ -212,24 +214,43 @@ namespace webapp_cloudrun.Repositories.Impl
             return imageurl;
         }
 
-        public async Task AddFavMovie(int userId, int id)
+        public async Task<string> AddFavMovie(int userId, int id)
         {
-            MyFavMovies favMov = new MyFavMovies();
+            MyFavMovies favMov = new MyFavMovies();  
             favMov.MovieId = id;
             favMov.userId = userId;
-           await _context.FavMovies.AddAsync(favMov);
-            await _context.SaveChangesAsync();
+            try
+            {
+                var isExist = _context.FavMovies.Where(c => c.MovieId == id && c.userId == userId);
+                if (isExist.Any())
+                {
+                    return "Already added.";
+                }
+                await _context.FavMovies.AddAsync(favMov);
+                await _context.SaveChangesAsync();
+                return "OK";
+
+            }
+            catch (Exception e)
+            {
+
+                throw new Exception($"error: please try again{e.Message}");
+            }
+           
         }
 
 
         public  List<Claim> GenerateClaims(User user)
         {
-            var claims = new[]
+            
+
+           var claims = new[]
             {
-        new Claim(ClaimTypes.Name, user.Username),
+        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
         new Claim(ClaimTypes.Role, user.Role),
         new Claim("DisplayName", user.Name),
         new Claim("Email", user.Email)
+       
     };
             return claims.ToList();
         }
@@ -262,25 +283,6 @@ namespace webapp_cloudrun.Repositories.Impl
            await  _context.AddAsync(user);
             await _context.SaveChangesAsync();
         }
-
-        //public static ClaimsPrincipal CreateClaimPrincipal(User user)
-        //{
-
-        //    var claims = new List<Claim>
-        //        {
-        //        new Claim(ClaimTypes.NameIdentifier, user.Username),
-        //        new Claim(ClaimTypes.Name, user.Username),
-        //        new Claim(ClaimTypes.Role, user.Role),
-        //        new Claim("DisplayName", user.Name),
-        //        new Claim("Email", user.Email),
-        //        };
-
-
-        //    var claimsIdentity = new ClaimsIdentity(
-        //        claims, CookieAuthenticationDefaults.AuthenticationScheme);
-
-        //    return claimsIdentity;
-        //}
 
         private static ClaimsPrincipal CreateClaimsPrincipal()
         {
@@ -320,6 +322,79 @@ namespace webapp_cloudrun.Repositories.Impl
             return existingUser;
         }
 
+        public async Task<IEnumerable<MyFavMovies>> GetAllFavMovies(int userId)
+        {
+            var models = await _context.FavMovies.Where(c => c.userId == userId).ToListAsync();
+
+            return models;
+        }
+
+        public async  Task<IEnumerable<MovieDetailsVM>> GetFavoriteMovieDetails(int userId)
+        {
+            var myFavMov = await GetAllFavMovies(userId);
+            List<Movie> movies = new();
+            foreach(var item in myFavMov)
+            {
+                var movie = await GetMovieById(item.MovieId);
+                movies.Add(movie);
+
+            }
+
+            var myFavMovies = await GetFullInfo(movies);
+
+            return myFavMovies;
+
+        }
+
+        public async  Task RemoveFromFav(int userId, int movieId)
+        {
+            var movieToRemove = await _context.FavMovies.Where(c => c.userId == userId && c.MovieId == movieId).FirstOrDefaultAsync();
+            _context.FavMovies.Remove(movieToRemove);
+            await _context.SaveChangesAsync();
+        }
+
+        public async  Task<IEnumerable<MovieDetailsVM>>IfExistAny(List<MovieDetailsVM> myFavs, List<MovieDetailsVM> allMovies)
+        {
+
+            var exceptMovies =  allMovies.Except(myFavs, Comparer<MovieDetailsVM>.Create(a => a.Movie.Id));
+            return exceptMovies;
+        }
+
+        public async Task<bool> IfAny(int userId, int movieId)
+        {       
+            var isThere =  _context.FavMovies.Any(c => c.userId == userId && c.MovieId == movieId);
+            return isThere;
+        }
+
+        public async Task<IEnumerable<UserFavMoviesInfo>> GetAllUsersFavMovies()
+        {
+            var favMoviesWithInfo = new List<UserFavMoviesInfo>();
+            var movieWithDetails = new List<MovieDetailsVM>();
+            UserFavMoviesInfo favMov;
+            var usersFavorites = await _context.FavMovies.ToListAsync();
+            foreach(var item in usersFavorites)
+            {
+                var user = await _context.FilmUser.Where(c=> c.Id == item.userId).FirstOrDefaultAsync();
+                var movies = await GetFavoriteMovieDetails(item.userId);
+                if (!favMoviesWithInfo.Any(c => c.Username == user.Username))
+                {
+                    favMov = new UserFavMoviesInfo();
+                    favMov.Username = user.Username;
+                    favMov.Movies = movies.ToList();
+                    favMov.Count = favMov.Movies.Count;
+                    favMoviesWithInfo.Add(favMov);
+                }
+
+            }
+        
+            return favMoviesWithInfo;
+        }
+
+        public async Task<IEnumerable<User>> GetAllUsers()
+        {
+            var users = await _context.FilmUser.ToListAsync();
+            return users;
+        }
     }
     //    public Movie GetMovieByTitle(string title)
     //    {
@@ -329,16 +404,5 @@ namespace webapp_cloudrun.Repositories.Impl
     //    }
     //}
 
-    //internal class AppDbContextMeClient
-    //{
-    //    private DbContextOptionsBuilder optionsBuilder;
-
-    //    public AppDbContextMeClient(DbContextOptionsBuilder optionsBuilder)
-    //    {
-    //        this.optionsBuilder = optionsBuilder;
-    //    }
-
-    //    public DbSet<Movie> MoviesEntities { get;  set; }
-    //}
 }
 

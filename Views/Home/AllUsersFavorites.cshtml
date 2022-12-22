@@ -1,0 +1,80 @@
+﻿@model List<webapp_cloudrun.Models.UserFavMoviesInfo>
+@{
+
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    List<webapp_cloudrun.Models.UserFavMoviesInfo> userfavmo = ViewBag.Users;
+  
+
+}
+@section Styles{
+    <link href="~/css/usersFav.css"  rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300i,400" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
+}
+
+
+
+
+    <ul class="tags">
+
+
+        <li><a class="tag" asp-controller="Home" asp-action="Index">All Movies</a></li>
+        
+        <li style="float:right;">
+            <form asp-controller="Home" asp-action="Logout">
+                <p>
+
+                    <input type="submit" value="Logout" />
+                </p>
+            </form>
+        </li>
+
+        </ul>
+
+
+
+    @foreach(var item in userfavmo)
+    { 
+         <div class="container">
+        <div class="card " style="margin-right:20px;">
+            <div style="background-color:black;">
+                <h3 class="title" style="background-color:black;">@item.Username</h3>
+            </div>
+            <div class="circle" style="align-content: center">
+             <h1 class="size">@item.Count</h1>
+            </div>
+        </div>
+  
+         
+            @foreach (var user in item.Movies)
+            {
+         
+            <div class="card">
+                <div style="background-color:black;">
+                    <h3 class="title"style="background-color:black;">@user.Movie.Title</h3>
+                </div>
+                <div   style="background-image: url(@user.Image_Url); height: 100%; background-size: 300px" >
+                    <img style="background-image: url(@user.Image_Url)" />
+                </div>
+            </div>
+              
+                  @*  <div class="emptybar"></div>
+                    <div class="filledbar"></div>*@
+      
+                
+            }
+            </div>
+            
+       
+       @* </div>*@
+
+   @*     <div class="col-12 col-sm-12 col-xl-12 col-md-12">
+        </div>*@
+
+}
+
+
+
+</div>
+  

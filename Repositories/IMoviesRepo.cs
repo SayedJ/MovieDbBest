@@ -19,10 +19,23 @@ namespace webapp_cloudrun.Repositories
         Task<string> SaveImageUrl(string url, Movie movie);
         Task<ImageUrl> GetImageUrl(Movie id);
         Task<User> Login(UserLogin userLogin);
-        Task AddFavMovie(int userId, int id);
+        Task<string> AddFavMovie(int userId, int id);
         public Action<ClaimsPrincipal> OnAuthStateChanged { get; set; }
         Task SaveUser(User user);
         Task<ClaimsPrincipal> GetAuthAsync();
+      
+        Task<IEnumerable<MyFavMovies>> GetAllFavMovies(int movieId);
+        Task<IEnumerable<MovieDetailsVM>> GetFavoriteMovieDetails(int movieId);
+
+        Task RemoveFromFav(int userId, int movieId);
+
+        Task<IEnumerable<MovieDetailsVM>> IfExistAny(List<MovieDetailsVM> myFavs, List<MovieDetailsVM> allMovies);
+
+        Task<bool> IfAny(int userId, int movieId);
+
+        Task<IEnumerable<UserFavMoviesInfo>> GetAllUsersFavMovies();
+
+        Task<IEnumerable<User>> GetAllUsers();
 
 
     }
