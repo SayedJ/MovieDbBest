@@ -1,31 +1,68 @@
-﻿steps:
-- name: gcr.io/cloud-builders/docker
-  args:
-   - build
-   - '--no-cache'
-   - '-t'
-   - '$_GCR_HOSTNAME/$PROJECT_ID/$_SERVICE_NAME:$COMMIT_SHA'
-   - .
-   - '-f'
-   -Dockerfile
-   id: Build
- - name: gcr.io/cloud-buildrs/docker
- args:
-  - push
-  - '$_GCR_HOSTNAME/$PROJECT_ID/$_SERVICE_NAME:$COMMIT_SHA'
-  id: Push
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
-    args:
-    - run
-    - deploy
-    - $_SERVICE_NAME
-    - '--image'
-    - '$_GCR_HOSTNAME/$PROJECT_ID/$_SERVICE_NAME:$COMMIT_SHA'
-    - '--region'
-    - $_DEPLOY_REGION
-  entrypoint: gcloud
-  id: Deploy
-  timeout: 1200s
-images:
-- '$_GCR_HOSTNAME/$PROJECT_ID/$_SERVICE_NAME:$COMMIT_SHA'
+﻿#steps:
+#- name: gcr.io/cloud-builders/docker
+#  args:
+#   - build
+#   - '--no-cache'
+#   - '-t'
+#   - '$_GCR_HOSTNAME/$PROJECT_ID/$_SERVICE_NAME:$COMMIT_SHA'
+#   - .
+#   - '-f'
+#   -Dockerfile
+#   id: Build
+# - name: gcr.io/cloud-buildrs/docker
+# args:
+#  - push
+#  - '$_GCR_HOSTNAME/$PROJECT_ID/$_SERVICE_NAME:$COMMIT_SHA'
+#  id: Push
+#  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+#    args:
+#    - run
+#    - deploy
+#    - $_SERVICE_NAME
+#    - '--image'
+#    - '$_GCR_HOSTNAME/$PROJECT_ID/$_SERVICE_NAME:$COMMIT_SHA'
+#    - '--region'
+#    - $_DEPLOY_REGION
+#  entrypoint: gcloud
+#  id: Deploy
+#  timeout: 1200s
+#images:
+#- '$_GCR_HOSTNAME/$PROJECT_ID/$_SERVICE_NAME:$COMMIT_SHA'
 
+---
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --no-cache
+      - -t
+      - $_GCR_HOSTNAME/$PROJECT_ID/$_SERVICE_NAME:$COMMIT_SHA
+      - .
+      - -f
+      - Dockerfile
+    id: Build
+  - task: DotNetCoreCLI@2
+    inputs: null
+    command: test
+    projects: "**/*Tests/*.csproj"
+    arguments: --configuration $(buildConfiguration)
+    id: Test
+  - name: gcr.io/cloud-buildrs/docker
+    args:
+      - push
+      - $_GCR_HOSTNAME/$PROJECT_ID/$_SERVICE_NAME:$COMMIT_SHA
+    id: Push
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    args:
+      - run
+      - deploy
+      - $_SERVICE_NAME
+      - --image
+      - $_GCR_HOSTNAME/$PROJECT_ID/$_SERVICE_NAME:$COMMIT_SHA
+      - --region
+      - $_DEPLOY_REGION
+    entrypoint: gcloud
+    id: Deploy
+    timeout: 1200s
+images:
+  - $_GCR_HOSTNAME/$PROJECT_ID/$_SERVICE_NAME:$COMMIT_SHA

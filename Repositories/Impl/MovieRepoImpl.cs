@@ -25,16 +25,19 @@ namespace webapp_cloudrun.Repositories.Impl
 
         private readonly HttpClient _httpClient;
         private readonly MovieDbContext _context;
-        private readonly IAuthService _authService;
 
         public Action<ClaimsPrincipal> OnAuthStateChanged { get; set; }
 
-        public MovieRepoImpl(MovieDbContext context, HttpClient httpClient, IAuthService authService)
+        public MovieRepoImpl(MovieDbContext context, HttpClient httpClient)
         {
             _context = context;
-            authService = _authService;
+  
             _httpClient = httpClient;
            
+        }
+
+        public MovieRepoImpl()
+        {
         }
 
         public async Task<IEnumerable<Movie>> GetAllMovies()
