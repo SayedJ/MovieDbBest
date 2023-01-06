@@ -8,7 +8,7 @@ namespace webapp_cloudrun.Models
     {
         [Key]
         public int Id { get; set; }
-        public int userId { get; set; }
-        public int MovieId { get; set; }
+        public int? userId { get; set; }
+        public int? MovieId { get; set; }
     }
 }

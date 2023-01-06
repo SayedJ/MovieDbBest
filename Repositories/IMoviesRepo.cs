@@ -9,7 +9,7 @@ namespace webapp_cloudrun.Repositories
     public interface IMoviesRepo
     {
         //Movie GetMovieByTitle(string title);
-        Task<Movie> GetMovieById(long id);
+        Task<Movie> GetMovieById(long? id);
         Task<IEnumerable<MovieDetailsVM>> GetAllMoviesWithDetails();
         Task<Rating> GetRatingById(int? id);
         Task<Director> GetDirectorById(int? id);
@@ -24,8 +24,8 @@ namespace webapp_cloudrun.Repositories
         Task SaveUser(User user);
         Task<ClaimsPrincipal> GetAuthAsync();
       
-        Task<IEnumerable<MyFavMovies>> GetAllFavMovies(int movieId);
-        Task<IEnumerable<MovieDetailsVM>> GetFavoriteMovieDetails(int movieId);
+        Task<IEnumerable<MyFavMovies>> GetAllFavMovies(int? movieId);
+        Task<IEnumerable<MovieDetailsVM>> GetFavoriteMovieDetails(int? movieId);
 
         Task RemoveFromFav(int userId, int movieId);
 

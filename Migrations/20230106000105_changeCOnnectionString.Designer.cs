@@ -12,8 +12,8 @@ using webapp_cloudrun.Context;
 namespace webappcloudrun.Migrations
 {
     [DbContext(typeof(MovieDbContext))]
-    [Migration("20221216101534_ToServerSql")]
-    partial class ToServerSql
+    [Migration("20230106000105_changeCOnnectionString")]
+    partial class changeCOnnectionString
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

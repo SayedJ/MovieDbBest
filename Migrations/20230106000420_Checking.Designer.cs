@@ -12,8 +12,8 @@ using webapp_cloudrun.Context;
 namespace webappcloudrun.Migrations
 {
     [DbContext(typeof(MovieDbContext))]
-    [Migration("20221222181413_finalModification")]
-    partial class finalModification
+    [Migration("20230106000420_Checking")]
+    partial class Checking
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

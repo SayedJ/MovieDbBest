@@ -5,7 +5,7 @@
 namespace webappcloudrun.Migrations
 {
     /// <inheritdoc />
-    public partial class finalModification : Migration
+    public partial class Checking2 : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

@@ -13,6 +13,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Azure;
 using Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal;
+using MockQueryable.Moq;
+using Moq;
+using Castle.Core.Internal;
 
 namespace webapp_cloudrun.Controllers;
 
@@ -30,8 +33,20 @@ public class HomeController : Controller
       
     }
     [Authorize()]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string sortOrder,
+    string currentFilter,
+    string searchString,
+    int? pageNumber)
     {
+        ViewData["CurrentSort"] = sortOrder;
+        if (searchString != null)
+        {
+            pageNumber = 1;
+        }
+        else
+        {
+            searchString = currentFilter;
+        }
         var idOfUser = _contextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
         userId = Convert.ToInt32(idOfUser);
 
@@ -44,43 +59,50 @@ public class HomeController : Controller
         var myMovies = await _repo.GetFavoriteMovieDetails(userId);
         ViewBag.Movies = myMovies;
         var notOnMyList = await _repo.IfExistAny(myMovies.ToList(), hundredMovies.ToList());
+        hundredMovies = hundredMovies.Where(c => !c.Image_Url.Contains("orginal"));
+        var mock = hundredMovies.AsQueryable().BuildMock();
+       
+        int pageSize = 20;
 
-      
- 
-            return View(hundredMovies);
+        return View(await PaginatedList<MovieDetailsVM>.CreateAsync(mock.AsNoTracking(), pageNumber ?? 1, pageSize));
         
       
         
     }
 
     [HttpPost]
-    public async Task<IActionResult> Index(string searchString) {
+    public async Task<IActionResult> Index(string searchString, int? pageNumber) {
 
         var movies = await _repo.GetAllMoviesWithDetails();
 
         var myMovies = await _repo.GetFavoriteMovieDetails(userId);
         ViewBag.Movies = myMovies;
-
+        int pageSize = 10;
         if (!String.IsNullOrEmpty(searchString))
         {
             var filteredMovies = movies.Where(s => s.Movie.Title!.Contains(searchString));
-            return View(filteredMovies);
+            var mock = filteredMovies.AsQueryable().BuildMock();
+           
+            return View(await PaginatedList<MovieDetailsVM>.CreateAsync(mock.AsNoTracking(), pageNumber ?? 1, pageSize));
         }
-        return View(movies);
+        var mockMovies = movies.AsQueryable().BuildMock();
+        return View(await PaginatedList<MovieDetailsVM>.CreateAsync(mockMovies.AsNoTracking(), pageNumber ?? 1, pageSize));
     }
 
  
-    public async Task<IActionResult> MyFavMovies()
+    public async Task<IActionResult> MyFavMovies(int? pageNumber)
     {
         var idOfUser = _contextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
         userId = Convert.ToInt32(idOfUser);
         var myFavoriteMovies = await  _repo.GetFavoriteMovieDetails(userId);
         ViewBag.Movies = myFavoriteMovies;
-        return View("Index", myFavoriteMovies);
+        int pageSize = 10;
+        var mock = myFavoriteMovies.AsQueryable().BuildMock();
+        return View("Index", await PaginatedList<MovieDetailsVM>.CreateAsync(mock.AsNoTracking(), pageNumber ?? 1, pageSize));
     } 
 
 
-    public async Task<IActionResult> NotOnMyList()
+    public async Task<IActionResult> NotOnMyList(int? pageNumber)
     {
         var idOfUser = _contextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
         userId = Convert.ToInt32(idOfUser);
@@ -88,7 +110,9 @@ public class HomeController : Controller
         var myMovies = await _repo.GetFavoriteMovieDetails(userId);
         ViewBag.Movies = myMovies;
         var notOnMyList = await _repo.IfExistAny(myMovies.ToList(), hundredMovies.ToList());
-        return View("Index", notOnMyList);
+        var mock = notOnMyList.AsQueryable().BuildMock();
+        int pageSize = 10;
+        return View("Index",await PaginatedList<MovieDetailsVM>.CreateAsync(mock.AsNoTracking(), pageNumber ?? 1, pageSize));
     }
 
     public async Task<IActionResult> AllUsersFavorites()

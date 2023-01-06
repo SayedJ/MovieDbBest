@@ -5,7 +5,7 @@
 namespace webappcloudrun.Migrations
 {
     /// <inheritdoc />
-    public partial class ToServerSql : Migration
+    public partial class changeCOnnectionString : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

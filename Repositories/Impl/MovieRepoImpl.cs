@@ -39,14 +39,16 @@ namespace webapp_cloudrun.Repositories.Impl
 
         public async Task<IEnumerable<Movie>> GetAllMovies()
         {
-            var movies = await _context.Movies.Where(s => s.Year > 1970).OrderByDescending(j => j.Year).Take(20).ToListAsync();
+            var movies = await _context.Movies.OrderByDescending(j => j.Year).Take(100).ToListAsync();
             return movies;
         }
 
         public async Task<IEnumerable<MovieDetailsVM>> GetAllMoviesWithDetails()
         {
             var movies = await GetAllMovies();
-            return await GetFullInfo(movies.ToList());
+           var moviesWithDetails = await GetFullInfo(movies.ToList());
+            moviesWithDetails = moviesWithDetails.Where(c => !c.Image_Url.Equals("https://image.tmdb.org/t/p/original"));
+            return moviesWithDetails;
             
         }
 
@@ -62,7 +64,7 @@ namespace webapp_cloudrun.Repositories.Impl
         }
 
     
-        public async Task<Movie> GetMovieById(long id)
+        public async Task<Movie> GetMovieById(long? id)
         {
 
             var secondMovie = await _context.Movies.Where(c => c.Id == id).FirstOrDefaultAsync();
@@ -322,14 +324,14 @@ namespace webapp_cloudrun.Repositories.Impl
             return existingUser;
         }
 
-        public async Task<IEnumerable<MyFavMovies>> GetAllFavMovies(int userId)
+        public async Task<IEnumerable<MyFavMovies>> GetAllFavMovies(int? userId)
         {
             var models = await _context.FavMovies.Where(c => c.userId == userId).ToListAsync();
 
             return models;
         }
 
-        public async  Task<IEnumerable<MovieDetailsVM>> GetFavoriteMovieDetails(int userId)
+        public async  Task<IEnumerable<MovieDetailsVM>> GetFavoriteMovieDetails(int? userId)
         {
             var myFavMov = await GetAllFavMovies(userId);
             List<Movie> movies = new();
