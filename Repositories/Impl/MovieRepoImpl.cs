@@ -42,7 +42,7 @@ namespace webapp_cloudrun.Repositories.Impl
 
         public async Task<IEnumerable<Movie>> GetAllMovies()
         {
-            var movies = await _context.Movies.OrderByDescending(j => j.Year).Take(100).ToListAsync();
+            var movies = await _context.Movies.ToListAsync();
             return movies;
         }
 
@@ -163,7 +163,7 @@ namespace webapp_cloudrun.Repositories.Impl
             MovieDetailsVM? movieInfo = new MovieDetailsVM();
             var ListOfmovieInfo = new List<MovieDetailsVM>();
             var movies = AllMovies;
-            foreach(var movie in movies)
+            foreach(var movie in AllMovies)
             {
                 IEnumerable<Star?>? stars = await GetStarById(movie.Id);
                 Rating? rating = await GetRatingById(movie.Id);
@@ -341,7 +341,8 @@ namespace webapp_cloudrun.Repositories.Impl
             foreach(var item in myFavMov)
             {
                 var movie = await GetMovieById(item.MovieId);
-                movies.Add(movie);
+                if(movie!= null) movies.Add(movie);
+              
 
             }
 
