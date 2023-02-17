@@ -42,10 +42,10 @@ steps:
       - Dockerfile
     id: Build
   - task: DotNetCoreCLI@2
-    inputs: null
-    command: test
-    projects: "**/*Tests/*.csproj"
-    arguments: --configuration $(buildConfiguration)
+    inputs:
+    command: 'test'
+    projects: '**/UnitTests/MovieRepoImplTests.cs'
+    arguments: '--configuration $(buildConfiguration)'
     id: Test
   - name: gcr.io/cloud-buildrs/docker
     args:

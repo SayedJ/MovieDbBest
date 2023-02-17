@@ -10,6 +10,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="UnitTests\obj\Debug\**" />
+    <Compile Remove="UnitTests\obj\Release\**" />
+    <Content Remove="UnitTests\obj\Debug\**" />
+    <Content Remove="UnitTests\obj\Release\**" />
+    <EmbeddedResource Remove="UnitTests\obj\Debug\**" />
+    <EmbeddedResource Remove="UnitTests\obj\Release\**" />
+    <None Remove="UnitTests\obj\Debug\**" />
+    <None Remove="UnitTests\obj\Release\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <_ContentIncludedByDefault Remove="efpt.config.json" />
   </ItemGroup>
 
@@ -40,6 +51,7 @@
 
   <ItemGroup>
     <Folder Include="Data\" />
+    <Folder Include="UnitTests\obj\" />
   </ItemGroup>
 
 </Project>
