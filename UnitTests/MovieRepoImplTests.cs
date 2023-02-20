@@ -18,7 +18,7 @@ namespace UnitTests
        {
             dbContext = new MovieDbContext();
             httpClient = new HttpClient();
-            movieRepo = new MovieRepoImpl(dbContext, httpClient);
+            movieRepo = new MovieRepoImpl(dbContext);
        }
 
         [Test]
@@ -37,7 +37,7 @@ namespace UnitTests
         {
              var user = new UserLogin();
              user.Username = "jalilhu";
-            user.Password= "sep6";
+            user.Password= "jalilhu";
             //act
            var userLoggedIn = await movieRepo.Login(user);
             Assert.That(userLoggedIn, Is.Not.Null);
@@ -48,10 +48,10 @@ namespace UnitTests
         public async Task AddFavMovie_CanAddedToList()
         {
             int userId = 1;
-            int movieId = 112456;
+            int movieId = 5516026;
             //act
           var result=  await movieRepo.AddFavMovie(userId, movieId);
-            Assert.That(result , Is.EqualTo("OK"));
+            Assert.That(result , Is.EqualTo("Already added."));
             Assert.That(result, Is.Not.Null);
             
         }
@@ -59,23 +59,23 @@ namespace UnitTests
         public async Task RemoveFromFav_ActuallyRemoves()
         {
             int userId = 1;
-            int movieId = 112456;
+            int movieId = 5516026;
            
            
             //act
             await movieRepo.RemoveFromFav(userId, movieId);
-            var favMovies = await movieRepo.GetAllFavMovies(1);
-            bool isNotExist = true;
+            var favMovies = await movieRepo.GetAllFavMovies(userId);
+            bool isExist = true;
             foreach(var item in favMovies)
             {
-                if(item.MovieId != 112456)
+                if(item.MovieId != 5516026)
                 {
-                    isNotExist = true;
+                    isExist = false;
                 }
             }
 
             //assert
-            Assert.IsTrue(isNotExist);
+            Assert.IsTrue(isExist);
         }
 
 

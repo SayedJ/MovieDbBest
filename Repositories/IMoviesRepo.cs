@@ -1,6 +1,7 @@
 ﻿
 
 using System.Security.Claims;
+using webapp_cloudrun.Context;
 using webapp_cloudrun.Models;
 using webapp_cloudrun.Models.MtoGetJsons;
 
@@ -11,21 +12,21 @@ namespace webapp_cloudrun.Repositories
         //Movie GetMovieByTitle(string title);
         Task<Movie> GetMovieById(long? id);
         Task<IEnumerable<MovieDetailsVM>> GetAllMoviesWithDetails();
-        Task<Rating> GetRatingById(int? id);
-        Task<Director> GetDirectorById(int? id);
-        Task<Person?> GetPersonById(int? id);
-        Task<IEnumerable<Star>> GetStarById(int? id);
+        Task<Rating> GetRatingById(MovieDbContext context, int? id);
+        Task<Director> GetDirectorById(MovieDbContext context, int? id);
+        Task<Person?> GetPersonById(MovieDbContext context, int? id);
+        Task<IEnumerable<Star>> GetStarById(MovieDbContext context, int? id);
         Task<IEnumerable<Movie>> GetAllMovies();
         Task<string> SaveImageUrl(string url, Movie movie);
-        Task<ImageUrl> GetImageUrl(Movie id);
+        Task<ImageUrl> GetImageUrlPath(MovieDbContext context, Movie movie);
         Task<User> Login(UserLogin userLogin);
         Task<string> AddFavMovie(int userId, int id);
         public Action<ClaimsPrincipal> OnAuthStateChanged { get; set; }
         Task SaveUser(User user);
         Task<ClaimsPrincipal> GetAuthAsync();
       
-        Task<IEnumerable<MyFavMovies>> GetAllFavMovies(int? movieId);
-        Task<IEnumerable<MovieDetailsVM>> GetFavoriteMovieDetails(int? movieId);
+        Task<IEnumerable<MyFavMovies>> GetAllFavMovies(int movieId);
+        Task<IEnumerable<MovieDetailsVM>> GetFavoriteMovieDetails(int movieId);
 
         Task RemoveFromFav(int userId, int movieId);
 
@@ -36,7 +37,6 @@ namespace webapp_cloudrun.Repositories
         Task<IEnumerable<UserFavMoviesInfo>> GetAllUsersFavMovies();
 
         Task<IEnumerable<User>> GetAllUsers();
-
-
+       
     }
 }

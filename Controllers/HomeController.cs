@@ -38,6 +38,7 @@ public class HomeController : Controller
     string searchString,
     int? pageNumber)
     {
+        ViewBag.SuccessMessage = TempData["success"] as string;
         ViewData["CurrentSort"] = sortOrder;
         if (searchString != null)
         {
@@ -57,7 +58,8 @@ public class HomeController : Controller
         ViewBag.UserId = idOfUser;
 
         var myMovies = await _repo.GetFavoriteMovieDetails(userId);
-        ViewBag.Movies = myMovies;
+        List<MovieDetailsVM> movieDetailsList = myMovies.ToList();
+        ViewBag.Movies = movieDetailsList;
         var notOnMyList = await _repo.IfExistAny(myMovies.ToList(), hundredMovies.ToList());
         hundredMovies = hundredMovies.Where(c => !c.Image_Url.Contains("orginal"));
         var mock = hundredMovies.AsQueryable().BuildMock();
@@ -76,7 +78,8 @@ public class HomeController : Controller
         var movies = await _repo.GetAllMoviesWithDetails();
 
         var myMovies = await _repo.GetFavoriteMovieDetails(userId);
-        ViewBag.Movies = myMovies;
+        List<MovieDetailsVM> movieDetailsList = myMovies.ToList();
+        ViewBag.Movies = movieDetailsList;
         int pageSize = 10;
         if (!String.IsNullOrEmpty(searchString))
         {
@@ -95,7 +98,7 @@ public class HomeController : Controller
         var idOfUser = _contextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
         userId = Convert.ToInt32(idOfUser);
         var myFavoriteMovies = await  _repo.GetFavoriteMovieDetails(userId);
-        ViewBag.Movies = myFavoriteMovies;
+        ViewBag.Movies = myFavoriteMovies.ToList();
         int pageSize = 10;
         var mock = myFavoriteMovies.AsQueryable().BuildMock();
         return View("Index", await PaginatedList<MovieDetailsVM>.CreateAsync(mock.AsNoTracking(), pageNumber ?? 1, pageSize));
@@ -108,7 +111,7 @@ public class HomeController : Controller
         userId = Convert.ToInt32(idOfUser);
         var hundredMovies = await _repo.GetAllMoviesWithDetails();
         var myMovies = await _repo.GetFavoriteMovieDetails(userId);
-        ViewBag.Movies = myMovies;
+        ViewBag.Movies = myMovies.ToList();
         var notOnMyList = await _repo.IfExistAny(myMovies.ToList(), hundredMovies.ToList());
         var mock = notOnMyList.AsQueryable().BuildMock();
         int pageSize = 10;
@@ -119,7 +122,7 @@ public class HomeController : Controller
     {
         var usersFav = await _repo.GetAllUsersFavMovies();
 
-        ViewBag.Users = usersFav;
+        //ViewBag.Users = usersFav.ToList();
         return View(usersFav);
     }
 
@@ -185,16 +188,18 @@ public class HomeController : Controller
             {
                 await _repo.SaveUser(user);
 
-                ViewBag.success = "Sign Up successfully.";
-               
+                TempData["success"] = "Sign Up successfully.";
+                return RedirectToAction("Index", "Home");
+
             }
+            
          
 
         }
         catch (Exception ex)
         {
             
-            ViewBag.error =  $"!!There is some error.{ex.Message}";
+            ViewBag.error =  $"!!There is some error.{ex.Message}, Please Refresh Page";
         }
         return View();
     }

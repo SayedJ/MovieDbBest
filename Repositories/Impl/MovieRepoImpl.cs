@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authentication;
+﻿using Google;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.Identity;
@@ -23,16 +24,14 @@ namespace webapp_cloudrun.Repositories.Impl
     public class MovieRepoImpl : IMoviesRepo
     {
 
-        private readonly HttpClient _httpClient;
         private readonly MovieDbContext _context;
 
         public Action<ClaimsPrincipal> OnAuthStateChanged { get; set; }
 
-        public MovieRepoImpl(MovieDbContext context, HttpClient httpClient)
+        public MovieRepoImpl(MovieDbContext context)
         {
             _context = context;
   
-            _httpClient = httpClient;
            
         }
 
@@ -40,164 +39,133 @@ namespace webapp_cloudrun.Repositories.Impl
         {
         }
 
+ 
+
         public async Task<IEnumerable<Movie>> GetAllMovies()
         {
-            var movies = await _context.Movies.ToListAsync();
-            return movies;
+            return _context.Movies;
         }
+
 
         public async Task<IEnumerable<MovieDetailsVM>> GetAllMoviesWithDetails()
         {
-            var movies = await GetAllMovies();
-           var moviesWithDetails = await GetFullInfo(movies.ToList());
-            moviesWithDetails = moviesWithDetails.Where(c => !c.Image_Url.Equals("https://image.tmdb.org/t/p/original"));
-            return moviesWithDetails;
-            
+            var movies = (await GetAllMovies()).AsQueryable();
+            var movieDetails = await GetFullInfo(movies.ToList());
+            movieDetails = movieDetails.Where(c => !c.Image_Url.Equals("https://image.tmdb.org/t/p/original"));
+            return movieDetails;
         }
 
-        public async Task<Director> GetDirectorById(int? id)
+        public async Task<Director> GetDirectorById(MovieDbContext context, int? id)
         {
-            var director = await _context.Directors.Where(c => c.MovieId == id).FirstOrDefaultAsync();
-            if (director == null)
-            {
-                director = new Director() { MovieId = id, PersonId = 00 };
-                return director;
-            }
-            return director;
+            return await context.Directors.FirstOrDefaultAsync(c => c.MovieId == id) ?? new Director();
         }
-
     
+
         public async Task<Movie> GetMovieById(long? id)
         {
-
-            var secondMovie = await _context.Movies.Where(c => c.Id == id).FirstOrDefaultAsync();
-            return secondMovie;
-
+            return await _context.Movies.Where(c => c.Id == id).FirstOrDefaultAsync();
         }
 
-      
 
-        public async Task<Person?> GetPersonById(int? id)
+
+        public async Task<Person?> GetPersonById(MovieDbContext context, int? id)
         {
-            Person? person = await _context.People.Where(c => c.Id == id).FirstOrDefaultAsync();
-            if (person == null)
-            {
-                person = new Person() { Id = id, Name = "Not available" };
-                return person;
-            }
-            return person;
+            return await context.People.FirstOrDefaultAsync(c => c.Id == id) ?? new Person();
         }
 
-        public async Task<Rating> GetRatingById(int? id)
+        public async Task<Rating> GetRatingById(MovieDbContext context,int? id)
         {
-
-            Rating? rating = await _context.Ratings.Where(c => c.MovieId == id).FirstOrDefaultAsync();
-            if(rating == null)
-            {
-                rating = new Rating() { MovieId = id, Rating1 = 00, Votes = 00 };
-                return rating;
-            }
-            return rating;
+            return await context.Ratings.FirstOrDefaultAsync(c => c.MovieId == id) ?? new Rating();
         }
 
        
-        public async Task<IEnumerable<Star>> GetStarById(int? id)
+        public async Task<IEnumerable<Star>> GetStarById(MovieDbContext context, int? id)
         {
-            var stars = await _context.Stars.Where(c => c.MovieId == id).ToListAsync();
-            if(stars == null)
-            {
-                stars = new List<Star>()
-                {
-                    new Star(){ MovieId = id, PersonId = 00}
-                };
-                return stars;
-            }
-            return stars;
+            return await context.Stars.Where(c => c.MovieId == id).ToListAsync() ?? new List<Star>();
         }
 
         public async Task<string> SaveImageUrl(string url, Movie movie)
         {
+            var context = new MovieDbContext();
             var urlPath = new ImageUrl();
+            
 
             if (string.IsNullOrEmpty(url))
             {
-
-                urlPath = await GetImageUrl(movie);
+                urlPath= await GetImageUrlPath(context, movie);
                 if (urlPath == null)
                 {
-                    urlPath.MovieId = movie.Id;
-                    urlPath.Url = "This is not the right path";
+                    urlPath = new ImageUrl()
+                    {
+                        MovieId = movie.Id,
+                        Url = "This is not the right path"
+                    };
+                    await _context.Imageurl.AddAsync(urlPath);
+                    await _context.SaveChangesAsync();
                     return urlPath.Url;
-
                 }
             }
+            else
+            {
+                urlPath = new ImageUrl()
+                {
+                    MovieId = movie.Id,
+                    Url = url
+                };
                 await _context.Imageurl.AddAsync(urlPath);
                 await _context.SaveChangesAsync();
                 return urlPath.Url;
-
-            
-
-
-        }
-        public async Task<string> GetImageUrlPath(Movie movie)
-        {
-            string imageUrl = "";
-            var imagePath = await _context.Imageurl.Where(c => c.MovieId == movie.Id).FirstOrDefaultAsync();
-            if (imagePath == null)
-            {
-                imagePath = new ImageUrl();
-                imageUrl = await SaveImageUrl(imageUrl, movie); 
-                imagePath.MovieId = movie.Id;
-                imagePath.Url = imageUrl;
-                return imagePath.Url;
             }
-
-            return imagePath.Url;
-
+            return urlPath.Url;
         }
-        private async Task<IEnumerable<MovieDetailsVM>> GetFullInfo(List<Movie> AllMovies)
+
+
+        public async Task<IEnumerable<MovieDetailsVM>> GetFullInfo(List<Movie> AllMovies)
         {
+
             string defaultImagePath = "wallpapers";
             string? imageUrl = "";
             Person? directorInfo;
-            MovieDetailsVM? movieInfo = new MovieDetailsVM();
-            var ListOfmovieInfo = new List<MovieDetailsVM>();
-            var movies = AllMovies;
-            foreach(var movie in AllMovies)
+            var tasks = new List<Task<MovieDetailsVM>>();
+            foreach (var movie in AllMovies)
             {
-                IEnumerable<Star?>? stars = await GetStarById(movie.Id);
-                Rating? rating = await GetRatingById(movie.Id);
-                Director? director =await  GetDirectorById(movie.Id);
-                directorInfo =await  GetPersonById(director.PersonId);
-                imageUrl = await GetImageUrlPath(movie);
-                if(!imageUrl.Contains(defaultImagePath))
+                tasks.Add(Task.Run(async () =>
                 {
-                    imageUrl = "https://image.tmdb.org/t/p/original" + imageUrl;
-                }
-                List<Person?>? people = new List<Person>();
-                foreach(var star in stars)
-                {
-                    var starsNames = await GetPersonById(star.PersonId);
-                    people.Add(starsNames);
-                }
-
-                movieInfo = new MovieDetailsVM() { Director = directorInfo, Stars = people, Movie = movie, Ratings = rating, Image_Url = imageUrl };
-                 ListOfmovieInfo.Add(movieInfo);
+                    using (var context = new MovieDbContext())
+                    {
+                        var stars = await GetStarById(context, movie.Id );
+                        var rating = await GetRatingById(context, movie.Id );
+                        var director = await GetDirectorById(context, movie.Id);
+                        directorInfo = await GetPersonById(context, director.PersonId);
+                        var imageUrlPath = await GetImageUrlPath(context, movie);
+                        imageUrl = imageUrlPath.Url;
+                        if (!imageUrl.Contains(defaultImagePath))
+                        {
+                            imageUrl = "https://image.tmdb.org/t/p/original" + imageUrl;
+                        }
+                        var people = new List<Person>();
+                        foreach (var star in stars)
+                        {
+                            var starsNames = await GetPersonById(context, star.PersonId);
+                            people.Add(starsNames);
+                        }
+                        return new MovieDetailsVM() { Director = directorInfo, Stars = people, Movie = movie, Ratings = rating, Image_Url = imageUrl };
+                    }
+                }));
             }
-
-            return  ListOfmovieInfo;
-
+            return await Task.WhenAll(tasks);
         }
 
 
-       
+
 
         [HttpGet]
-        public async Task<ImageUrl> GetImageUrl(Movie movie)
+        public async Task<ImageUrl> GetImageUrlPath(MovieDbContext context, Movie movie)
         {
+            var _httpClient = new HttpClient();
             string finalImagePath = "https://assets.wallpapersin4k.org/uploads/2017/04/Film-Roll-Wallpaper-17.jpg";
             ImageUrl? imageurl = new ImageUrl();
-            var responseMsg = await _httpClient.GetAsync($"/3/search/movie?api_key=c068c27751633a9ac879823f703291c6&query={movie.Title}");
+            var responseMsg = await _httpClient.GetAsync($"https://api.themoviedb.org/3/search/movie?api_key=c068c27751633a9ac879823f703291c6&query={movie.Title}");
             imageurl.MovieId = movie.Id;
             var content = responseMsg.Content.ReadAsStringAsync().Result; ;
             if (!responseMsg.IsSuccessStatusCode)
@@ -221,62 +189,41 @@ namespace webapp_cloudrun.Repositories.Impl
 
         public async Task<string> AddFavMovie(int userId, int id)
         {
-            MyFavMovies favMov = new MyFavMovies();  
-            favMov.MovieId = id;
-            favMov.userId = userId;
-            try
+            if (await _context.FavMovies.AnyAsync(c => c.MovieId == id && c.userId == userId))
             {
-                var isExist = _context.FavMovies.Where(c => c.MovieId == id && c.userId == userId);
-                if (isExist.Any())
-                {
-                    return "Already added.";
-                }
-                await _context.FavMovies.AddAsync(favMov);
-                await _context.SaveChangesAsync();
-                return "OK";
-
+                return "Already added.";
             }
-            catch (Exception e)
+
+            await _context.FavMovies.AddAsync(new MyFavMovies
             {
+                MovieId = id,
+                userId = userId
+            });
+            await _context.SaveChangesAsync();
 
-                throw new Exception($"error: please try again{e.Message}");
-            }
-           
+            return "OK";
         }
 
-
-        public  List<Claim> GenerateClaims(User user)
+        public List<Claim> GenerateClaims(User user) => new[]
         {
-            
-
-           var claims = new[]
-            {
-        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-        new Claim(ClaimTypes.Role, user.Role),
-        new Claim("DisplayName", user.Name),
-        new Claim("Email", user.Email)
-       
-    };
-            return claims.ToList();
-        }
-
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Role, user.Role),
+            new Claim("DisplayName", user.Name),
+            new Claim("Email", user.Email)
+        }.ToList();
+      
         public async Task<User> Login(UserLogin userLogin)
         {
             try
             {
-             
-             User? user = await ValidateUser(userLogin.Username, userLogin.Password);
-                if(user == null)
+                User? user = await ValidateUser(userLogin.Username, userLogin.Password);
+                if (user == null)
                 {
                     throw new Exception("wrong email or password");
-
                 }
-                
-                //ClaimsPrincipal principal = CreateClaimPrincipal(user);
 
                 return user;
             }
-
             catch (Exception e)
             {
                 throw new Exception(e.Message);
@@ -285,7 +232,7 @@ namespace webapp_cloudrun.Repositories.Impl
         public async Task SaveUser(User user)
         {
            
-           await  _context.AddAsync(user);
+            _context.FilmUser.Add(user);
             await _context.SaveChangesAsync();
         }
 
@@ -327,88 +274,83 @@ namespace webapp_cloudrun.Repositories.Impl
             return existingUser;
         }
 
-        public async Task<IEnumerable<MyFavMovies>> GetAllFavMovies(int? userId)
+       
+
+        public async Task<IEnumerable<MyFavMovies>> GetAllFavMovies(int userId)
         {
             var models = await _context.FavMovies.Where(c => c.userId == userId).ToListAsync();
-
-            return models;
+            if(models.Any())
+            {
+                return models;
+            }
+            return models ?? throw new Exception("somethng is wrong here");
         }
 
-        public async  Task<IEnumerable<MovieDetailsVM>> GetFavoriteMovieDetails(int? userId)
+
+        public async Task<IEnumerable<MovieDetailsVM>> GetFavoriteMovieDetails(int userId)
         {
             var myFavMov = await GetAllFavMovies(userId);
             List<Movie> movies = new();
-            foreach(var item in myFavMov)
+            foreach (var item in myFavMov)
             {
                 var movie = await GetMovieById(item.MovieId);
-                if(movie!= null) movies.Add(movie);
-              
-
+                if (movie != null) movies.Add(movie);
             }
 
-            var myFavMovies = await GetFullInfo(movies);
-
-            return myFavMovies;
-
+            return await GetFullInfo(movies);
         }
 
-        public async  Task RemoveFromFav(int userId, int movieId)
+       
+        public async Task RemoveFromFav(int userId, int movieId)
         {
-            var movieToRemove = await _context.FavMovies.Where(c => c.userId == userId && c.MovieId == movieId).FirstOrDefaultAsync();
+            var movieToRemove = await _context.FavMovies.FirstOrDefaultAsync(c => c.userId == userId && c.MovieId == movieId);
             _context.FavMovies.Remove(movieToRemove);
             await _context.SaveChangesAsync();
         }
 
-        public async  Task<IEnumerable<MovieDetailsVM>>IfExistAny(List<MovieDetailsVM> myFavs, List<MovieDetailsVM> allMovies)
-        {
+        public async Task<IEnumerable<MovieDetailsVM>> IfExistAny(List<MovieDetailsVM> myFavs, List<MovieDetailsVM> allMovies) =>
+            allMovies.Except(myFavs, Comparer<MovieDetailsVM>.Create(a => a.Movie.Id));
 
-            var exceptMovies =  allMovies.Except(myFavs, Comparer<MovieDetailsVM>.Create(a => a.Movie.Id));
-            return exceptMovies;
-        }
+        public async Task<bool> IfAny(int userId, int movieId) =>
+            await _context.FavMovies.AnyAsync(c => c.userId == userId && c.MovieId == movieId);
 
-        public async Task<bool> IfAny(int userId, int movieId)
-        {       
-            var isThere =  _context.FavMovies.Any(c => c.userId == userId && c.MovieId == movieId);
-            return isThere;
-        }
 
         public async Task<IEnumerable<UserFavMoviesInfo>> GetAllUsersFavMovies()
         {
             var favMoviesWithInfo = new List<UserFavMoviesInfo>();
             var movieWithDetails = new List<MovieDetailsVM>();
             UserFavMoviesInfo favMov;
+
             var usersFavorites = await _context.FavMovies.ToListAsync();
-            foreach(var item in usersFavorites)
+            var userIds = usersFavorites.Select(f => f.userId).Distinct();
+
+            foreach (var userId in userIds)
             {
-                var user = await _context.FilmUser.Where(c=> c.Id == item.userId).FirstOrDefaultAsync();
-                var movies = await GetFavoriteMovieDetails(item.userId);
-                if (!favMoviesWithInfo.Any(c => c.Username == user.Username))
+                var user = await _context.FilmUser.FirstOrDefaultAsync(u => u.Id == userId);
+                if (user == null)
                 {
-                    favMov = new UserFavMoviesInfo();
-                    favMov.Username = user.Username;
-                    favMov.Movies = movies.ToList();
-                    favMov.Count = favMov.Movies.Count;
-                    favMoviesWithInfo.Add(favMov);
+                    continue;
                 }
 
+                var movies = await GetFavoriteMovieDetails((int)userId);
+                favMov = new UserFavMoviesInfo();
+                favMov.Username = user.Username;
+                favMov.Movies = movies.ToList();
+                favMov.Count = favMov.Movies.Count;
+                favMoviesWithInfo.Add(favMov);
             }
-        
+
             return favMoviesWithInfo;
         }
 
         public async Task<IEnumerable<User>> GetAllUsers()
         {
-            var users = await _context.FilmUser.ToListAsync();
-            return users;
+            return await _context.FilmUser.ToListAsync();
         }
-    }
-    //    public Movie GetMovieByTitle(string title)
-    //    {
-    //        var secondMovie = _context.Movies.Where(c => c.Title.Equals(title)).FirstOrDefault();
-    //        return secondMovie;
 
-    //    }
-    //}
+    }
+   
+
 
 }
 

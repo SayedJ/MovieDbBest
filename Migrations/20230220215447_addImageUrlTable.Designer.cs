@@ -12,8 +12,8 @@ using webapp_cloudrun.Context;
 namespace webappcloudrun.Migrations
 {
     [DbContext(typeof(MovieDbContext))]
-    [Migration("20230217033437_GoodglDatase")]
-    partial class GoodglDatase
+    [Migration("20230220215447_addImageUrlTable")]
+    partial class addImageUrlTable
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
